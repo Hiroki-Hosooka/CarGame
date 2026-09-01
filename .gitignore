@@ -1,0 +1,46 @@
+# Unity が自動生成するフォルダ（別PCでUnityを開けば再生成されるため不要）
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Mm]emoryCaptures/
+/[Uu]ser[Ss]ettings/
+
+# アセットのmetaファイルは、対応するアセット自体が無視されている場合のみ無視する
+!/[Aa]ssets/**/*.meta
+
+# Visual Studio / Rider が生成するファイル
+.vs/
+.idea/
+ExportedObj/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity3D が生成するファイル
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+
+# ビルド成果物
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# Claude Code のセッションデータ（このPC固有のもので、ゲーム本体には不要）
+.claude/
