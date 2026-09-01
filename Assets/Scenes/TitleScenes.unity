@@ -2195,8 +2195,10 @@ MonoBehaviour:
   difficultyLabel: {fileID: 1196410265}
   courseSceneNames:
   - GameScenes
+  - GameScenes2
   courseNames:
   - "\u30B3\u30FC\u30B91"
+  - "\u30B3\u30FC\u30B92"
   courseLabel: {fileID: 1493361702}
   minCpuCount: 0
   maxCpuCount: 8
