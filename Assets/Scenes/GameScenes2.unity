@@ -1131,10 +1131,10 @@ MonoBehaviour:
   maxCoins: 10
   bananaStunDuration: 1.5
   starDuration: 5
-  starExtraSpeed: 6
+  starExtraSpeed: 16
   starCrashStunDuration: 2
   killerMaxDuration: 8
-  killerSpeed: 22
+  killerSpeed: 34
   killerTargetRank: 4
   enableSlipstream: 1
   slipstreamRange: 13
