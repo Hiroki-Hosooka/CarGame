@@ -49,7 +49,7 @@ public class AICarController : MonoBehaviour, IStunnable
 
     [Header("Item - Star")]
     public float starDuration = 5f;
-    public float starExtraSpeed = 6f;
+    public float starExtraSpeed = 16f;
     public float starCrashStunDuration = 2f; // 無敵中に他の車へ衝突したときに与えるスタン時間
     bool isInvincible;
     float invincibleTimer;
@@ -57,7 +57,7 @@ public class AICarController : MonoBehaviour, IStunnable
 
     [Header("Item - Killer")]
     public float killerMaxDuration = 8f;
-    public float killerExtraSpeed = 14f;
+    public float killerExtraSpeed = 26f;
     public int killerTargetRank = 4; // この順位以内に入ったらブーストを終了する
     float killerTimeRemaining;
 
@@ -323,7 +323,7 @@ public class AICarController : MonoBehaviour, IStunnable
         rubberBandTarget = multiplier;
     }
 
-    // 50cc/100cc/150ccのクラス倍率を、速度に関わる値すべてに反映する。
+    // 50cc/100cc/150cc/200ccのクラス倍率を、速度に関わる値すべてに反映する。
     // moveSpeed/turnSpeedはRaceManager側で設定するため、ここではそれ以外のみ扱う。
     public void ApplySpeedClass(float multiplier)
     {

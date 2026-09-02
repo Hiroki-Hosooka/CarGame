@@ -7,7 +7,7 @@ public static class GameSettings
 
     public static int CharacterIndex = 0;
 
-    // 50cc/100cc/150ccのクラス倍率。Player・CPUの両方に同じ値が掛かり、レース全体のスピード感が変わる。
+    // 50cc/100cc/150cc/200ccのクラス倍率。Player・CPUの両方に同じ値が掛かり、レース全体のスピード感が変わる。
     public static float SpeedClass = 1f;
 
     // CPUだけに掛かる相対的な強さ。クラスが上がるほど1に近づき、CPUがプレイヤーに迫る。

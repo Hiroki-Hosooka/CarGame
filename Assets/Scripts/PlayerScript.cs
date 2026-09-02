@@ -64,14 +64,14 @@ public class PlayerScript : MonoBehaviour, IStunnable
 
     [Header("Item - Star")]
     public float starDuration = 5f;
-    public float starExtraSpeed = 6f;
+    public float starExtraSpeed = 16f;
     public float starCrashStunDuration = 2f; // 無敵中に他の車へ衝突したときに与えるスタン時間
     bool isInvincible;
     float invincibleTimer;
 
     [Header("Item - Killer")]
     public float killerMaxDuration = 8f;
-    public float killerSpeed = 22f;
+    public float killerSpeed = 34f;
     public int killerTargetRank = 4; // この順位以内に入ったら自動運転を終了する
     bool isKillerActive;
     float killerTimer;
@@ -670,7 +670,7 @@ public class PlayerScript : MonoBehaviour, IStunnable
         slipstreamCharge = Mathf.Clamp(slipstreamCharge + delta, 0f, slipstreamChargeTime);
     }
 
-    // 50cc/100cc/150ccのクラス倍率を、速度に関わる値すべてに反映する。
+    // 50cc/100cc/150cc/200ccのクラス倍率を、速度に関わる値すべてに反映する。
     // RaceManagerがレース開始時に一度だけ呼ぶ。
     public void ApplySpeedClass(float multiplier)
     {

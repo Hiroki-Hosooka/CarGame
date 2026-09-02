@@ -16,7 +16,7 @@ public class RaceManager : MonoBehaviour
     // 判定は「押した瞬間」なので、押しっぱなしでは成功しない。
     public float startDashWindow = 0.4f;
 
-    [Header("Speed Class (50cc / 100cc / 150cc)")]
+    [Header("Speed Class (50cc / 100cc / 150cc / 200cc)")]
     [Tooltip("Player・CPU共通の速度倍率。タイトル画面から来た場合は選択したクラスの値で上書きされる。")]
     public float speedClassMultiplier = 1f;
 
@@ -122,7 +122,7 @@ public class RaceManager : MonoBehaviour
             speedClassMultiplier = GameSettings.SpeedClass;
         }
 
-        // 50cc/100cc/150ccのクラス倍率をプレイヤーに反映する（CPUはSpawnAICars内で反映）。
+        // 50cc/100cc/150cc/200ccのクラス倍率をプレイヤーに反映する（CPUはSpawnAICars内で反映）。
         if (player != null) player.ApplySpeedClass(speedClassMultiplier);
 
         trackPath = BuildWaypoints();

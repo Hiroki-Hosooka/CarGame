@@ -8,9 +8,9 @@ public enum ItemKind
     HomingShell, // 追尾こうら：近くの相手を自動で追いかける（壁には反射せず壊れる）
     Coin,        // コイン：即時に少し速くなる（自動発動、蓄積）
     Banana,      // バナナ：後方に設置、踏むとスタン
-    Star,        // スター相当：一定時間無敵＋加速、ぶつかった相手をクラッシュさせる
+    Star,        // スター相当：一定時間無敵＋大幅加速、ぶつかった相手をクラッシュさせる
     Lightning,   // 雷相当：自分以外の全員を一瞬スタン
-    Killer       // 最下位専用：一定時間オートで高速走行し、順位を追い上げる
+    Killer       // 追い上げ用：一定時間オートで大幅な高速走行をし、順位を追い上げる（4位以下にほぼ確実に出る）
 }
 
 // コース上に置くアイテムボックス。空のGameObjectにこれを付けるだけで、
@@ -31,7 +31,17 @@ public class ItemBox : MonoBehaviour
     public float pickupFlashDuration = 0.25f;
 
     // 最下位のときにKillerが出る確率（他の強いアイテムに混じって、たまに出る）。
+    // レーサー数が少なく「4位」が存在しないレースでのフォールバックとして使う。
     public float killerChanceForLastPlace = 0.3f;
+
+    [Tooltip("この順位以下（数字が大きい方）は追い上げゾーンとして扱い、スター/キラーがほぼ確実に出るようにする。")]
+    public int comebackZoneStartRank = 4;
+
+    [Tooltip("追い上げゾーン内でスター/キラーが出る確率。")]
+    public float comebackItemChance = 0.85f;
+
+    [Tooltip("上位ほどbackPool（強いアイテム）が出にくくなる度合い。大きいほど上位の強アイテム排出が急激に減る。")]
+    public float backPoolCurvePower = 1.6f;
 
     GameObject visual;
     Vector3 basePosition;
@@ -174,8 +184,8 @@ public class ItemBox : MonoBehaviour
         flashTimer = pickupFlashDuration;
     }
 
-    // 現在の順位に応じてアイテムを選ぶ。下位ほど強いアイテムが出やすく、
-    // 最下位のときだけ低確率でKillerが混じる。
+    // 現在の順位に応じてアイテムを選ぶ。4位以下は追い上げゾーンとしてスター/キラーが
+    // ほぼ確実に出る。上位（1〜3位）ほど強いアイテムの排出を急激に絞る。
     ItemKind PickItemFor(GameObject carRoot)
     {
         if (raceManager == null || raceManager.RacerCount < 2)
@@ -187,13 +197,23 @@ public class ItemBox : MonoBehaviour
         int total = raceManager.RacerCount;
         bool isLastPlace = rank >= total;
 
+        // 追い上げゾーン（4位以下）：ほぼ確実にスターかキラーが出る。
+        if (rank >= comebackZoneStartRank && Random.value < comebackItemChance)
+        {
+            return Random.value < 0.5f ? ItemKind.Killer : ItemKind.Star;
+        }
+
+        // レーサー数が少なく追い上げゾーンが存在しないレースでは、従来通り
+        // 最下位に低確率でKillerを混ぜるだけにとどめる。
         if (isLastPlace && Random.value < killerChanceForLastPlace)
         {
             return ItemKind.Killer;
         }
 
-        // t: 0=1位, 1=最下位。数字が大きいほどbackPool（強いアイテム）を選ぶ確率が上がる。
-        float t = total > 1 ? (float)(rank - 1) / (total - 1) : 0f;
+        // t: 0=1位, 1=最下位。べき乗をかけることで、上位ほどbackPool（強いアイテム）を
+        // 選ぶ確率が急激に下がるようにする。
+        float linear = total > 1 ? (float)(rank - 1) / (total - 1) : 0f;
+        float t = Mathf.Pow(linear, backPoolCurvePower);
         ItemKind[] pool = Random.value < t ? backPool : frontPool;
         ItemKind picked = pool[Random.Range(0, pool.Length)];
 

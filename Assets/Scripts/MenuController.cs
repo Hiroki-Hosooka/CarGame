@@ -10,15 +10,16 @@ public class MenuController : MonoBehaviour
     public Text characterLabel;
     int characterIndex = 0;
 
-    [Header("Speed Class (50cc / 100cc / 150cc)")]
-    public string[] classNames = { "50cc", "100cc", "150cc" };
+    [Header("Speed Class (50cc / 100cc / 150cc / 200cc)")]
+    public string[] classNames = { "50cc", "100cc", "150cc", "200cc" };
 
-    [Tooltip("Player・CPU共通の速度倍率。クラスが上がると全員が速くなり、レース全体のスピード感が変わる。")]
-    public float[] classSpeedMultipliers = { 0.8f, 1f, 1.2f };
+    [Tooltip("Player・CPU共通の速度倍率。クラスが上がると全員が速くなり、レース全体のスピード感が変わる。" +
+        "200ccは150ccのおよそ2倍の速度になるよう設定している。")]
+    public float[] classSpeedMultipliers = { 0.6f, 1f, 1.8f, 3.6f };
 
     [Tooltip("CPUの最高速がプレイヤーの何倍か。クラスが上がるほど1に近づきCPUが手強くなる。" +
-        "1未満にしておくことで、150ccでも直線ではプレイヤーが必ず抜けるようにしている。")]
-    public float[] classAiSpeedRatio = { 0.72f, 0.85f, 0.95f };
+        "1未満にしておくことで、200ccでも直線ではプレイヤーが必ず抜けるようにしている。")]
+    public float[] classAiSpeedRatio = { 0.65f, 0.85f, 0.95f, 0.98f };
 
     // フィールド名はシーンのInspector参照を壊さないよう変更していない（表示は50cc等になる）。
     public Text difficultyLabel;
