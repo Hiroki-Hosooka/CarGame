@@ -455,6 +455,7 @@ public class RaceManager : MonoBehaviour
             case HitCause.Banana: return "HIT BY BANANA!";
             case HitCause.Lightning: return "HIT BY LIGHTNING!";
             case HitCause.Crash: return "CRASHED!";
+            case HitCause.FellOff: return "OUT!! FELL OFF THE COURSE!";
             default: return "";
         }
     }
