@@ -57,6 +57,9 @@ public class AICarController : MonoBehaviour, IStunnable
 
     [Header("Item - Killer")]
     public float killerMaxDuration = 8f;
+    [Tooltip("使用開始からこの秒数が経つまでは、既にkillerTargetRank以内でも自動終了しない。" +
+        "既に目標順位にいる状態で使ってしまい、何も起きずに終わることを防ぐ。")]
+    public float killerMinDuration = 2.5f;
     public float killerExtraSpeed = 26f;
     public int killerTargetRank = 4; // この順位以内に入ったらブーストを終了する
     float killerTimeRemaining;
@@ -328,7 +331,9 @@ public class AICarController : MonoBehaviour, IStunnable
         if (killerTimeRemaining > 0f)
         {
             killerTimeRemaining -= Time.fixedDeltaTime;
-            if (raceManager != null && raceManager.GetRank(gameObject) <= killerTargetRank)
+            float elapsedSinceKillerStart = killerMaxDuration - killerTimeRemaining;
+            if (elapsedSinceKillerStart >= killerMinDuration
+                && raceManager != null && raceManager.GetRank(gameObject) <= killerTargetRank)
             {
                 killerTimeRemaining = 0f;
             }

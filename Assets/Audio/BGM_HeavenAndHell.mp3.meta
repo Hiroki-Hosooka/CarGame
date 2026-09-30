@@ -1,0 +1,29 @@
+fileFormatVersion: 2
+guid: f274d1898974474389678af197a29edd
+AudioImporter:
+  externalObjects: {}
+  serializedVersion: 7
+  defaultSettings:
+    loadType: 0
+    sampleRateSetting: 0
+    sampleRateOverride: 44100
+    compressionFormat: 1
+    quality: 1
+    conversionMode: 0
+    sharedPresetName:
+  compressionFormat: 1
+  panLevelCustomCurve: []
+  spatialBlendCustomCurve: []
+  customRolloffCurve: []
+  spreadCustomCurve: []
+  reverbZoneMixCustomCurve: []
+  platformSettingOverrides: {}
+  forceToMono: 0
+  normalize: 1
+  preloadAudioData: 1
+  loadInBackground: 0
+  ambisonic: 0
+  3D: 1
+  userData:
+  assetBundleName:
+  assetBundleVariant:

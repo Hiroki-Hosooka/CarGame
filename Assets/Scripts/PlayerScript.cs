@@ -71,6 +71,9 @@ public class PlayerScript : MonoBehaviour, IStunnable
 
     [Header("Item - Killer")]
     public float killerMaxDuration = 8f;
+    [Tooltip("使用開始からこの秒数が経つまでは、既にkillerTargetRank以内でも自動終了しない。" +
+        "既に目標順位にいる状態で使ってしまい、何も起きずに終わる（＝機能していないように見える）ことを防ぐ。")]
+    public float killerMinDuration = 2.5f;
     public float killerSpeed = 34f;
     public int killerTargetRank = 4; // この順位以内に入ったら自動運転を終了する
     bool isKillerActive;
@@ -529,7 +532,9 @@ public class PlayerScript : MonoBehaviour, IStunnable
     {
         killerTimer -= Time.deltaTime;
 
-        bool reachedTarget = raceManager != null && raceManager.GetRank(gameObject) <= killerTargetRank;
+        float elapsedSinceStart = killerMaxDuration - killerTimer;
+        bool reachedTarget = elapsedSinceStart >= killerMinDuration
+            && raceManager != null && raceManager.GetRank(gameObject) <= killerTargetRank;
         if (killerTimer <= 0f || reachedTarget)
         {
             isKillerActive = false;
@@ -580,6 +585,20 @@ public class PlayerScript : MonoBehaviour, IStunnable
                 nearest = i;
             }
         }
+
+        // 単純な最近傍だと、既に通り過ぎた直後のウェイポイントの方が次のウェイポイントより
+        // 近いことがあり、そちらへ引き返す「逆走」が起きてしまう。進行方向の後ろ側にある
+        // 場合は、1つ先のウェイポイントを初期目標にする。
+        if (path[nearest] != null)
+        {
+            Vector3 toNearest = path[nearest].position - transform.position;
+            toNearest.y = 0f;
+            if (toNearest.sqrMagnitude > 0.0001f && Vector3.Dot(transform.forward, toNearest.normalized) < 0f)
+            {
+                nearest = (nearest + 1) % path.Length;
+            }
+        }
+
         return nearest;
     }
 
