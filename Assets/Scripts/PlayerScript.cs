@@ -77,6 +77,16 @@ public class PlayerScript : MonoBehaviour, IStunnable
     float killerTimer;
     int killerWaypointIndex = -1;
 
+    [Header("Fall Recovery (レインボーロード等、コース外に地面が無いコース用)")]
+    [Tooltip("このY座標を下回ったら「コース外に落下した」とみなし、直前の安全な位置まで引き戻す。")]
+    public float fallThresholdY = -10f;
+    [Tooltip("落下から復帰した直後、少しの間だけ操作を止める時間（Lakituに引き上げてもらうイメージ）。")]
+    public float respawnFreezeDuration = 1.2f;
+    Vector3 lastSafePosition;
+    Quaternion lastSafeRotation;
+    bool isRespawning;
+    float respawnTimer;
+
     [Header("Slipstream (前の車の後ろにつくと加速)")]
     public bool enableSlipstream = true;
     [Tooltip("この距離以内に前走車がいるとスリップストリームが溜まる。")]
@@ -233,6 +243,25 @@ public class PlayerScript : MonoBehaviour, IStunnable
     void Update()
     {
         turnInput = 0f;
+
+        // 落下からの復帰中は、少しの間だけ何もさせない（Lakituに引き上げてもらっている間のイメージ）。
+        if (isRespawning)
+        {
+            respawnTimer -= Time.deltaTime;
+            forwardPressed = false;
+            backPressed = false;
+            if (respawnTimer <= 0f) isRespawning = false;
+            return;
+        }
+
+        // コース外に落下したら、直前の安全な位置まで引き戻す。
+        if (transform.position.y < fallThresholdY)
+        {
+            Respawn();
+            return;
+        }
+        lastSafePosition = transform.position;
+        lastSafeRotation = transform.rotation;
 
         // 被弾直後の無敵は、スタン中も含めて時間を進める（スタン明けにも少し無敵が残る）。
         if (hitInvincibleTimer > 0f)
@@ -586,9 +615,31 @@ public class PlayerScript : MonoBehaviour, IStunnable
         EndDrift(false);
     }
 
+    // 落下してから復帰するまでの間、直前の安全な位置とその向きを覚えておく。
+    void Respawn()
+    {
+        isRespawning = true;
+        respawnTimer = respawnFreezeDuration;
+        isStunned = false;
+        isDrifting = false;
+        driftCharge = 0f;
+        velocity = Vector3.zero;
+        if (rb != null) rb.velocity = Vector3.zero;
+        transform.position = lastSafePosition + Vector3.up * 0.5f;
+        transform.rotation = lastSafeRotation;
+        lastHitCause = HitCause.FellOff;
+        hitMessageTimer = hitMessageDuration;
+    }
+
     void FixedUpdate()
     {
         if (rb == null) return;
+
+        if (isRespawning)
+        {
+            rb.velocity = Vector3.zero;
+            return;
+        }
 
         float effectiveMoveSpeed = isKillerActive ? Mathf.Max(EffectiveMoveSpeed, killerSpeed) : EffectiveMoveSpeed;
 

@@ -2198,7 +2198,7 @@ MonoBehaviour:
   - GameScenes2
   courseNames:
   - "\u30B3\u30FC\u30B91"
-  - "\u30B3\u30FC\u30B92"
+  - "\u30EC\u30A4\u30F3\u30DC\u30FC\u30ED\u30FC\u30C9"
   courseLabel: {fileID: 1493361702}
   minCpuCount: 0
   maxCpuCount: 8

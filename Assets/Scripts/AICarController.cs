@@ -66,6 +66,16 @@ public class AICarController : MonoBehaviour, IStunnable
     public float postHitInvincibleDuration = 3f;
     float hitInvincibleTimer;
 
+    [Header("Fall Recovery (レインボーロード等、コース外に地面が無いコース用)")]
+    [Tooltip("このY座標を下回ったら「コース外に落下した」とみなし、直前の安全な位置まで引き戻す。")]
+    public float fallThresholdY = -10f;
+    [Tooltip("落下から復帰した直後、少しの間だけ操作を止める時間。")]
+    public float respawnFreezeDuration = 1.2f;
+    Vector3 lastSafePosition;
+    Quaternion lastSafeRotation;
+    bool isRespawning;
+    float respawnTimer;
+
     [Header("Catch-up (Rubber Band)")]
     [Tooltip("RaceManagerが「プレイヤーとの差」に応じて設定する速度倍率。前に行き過ぎたら1未満、離されたら1より大きくなる。")]
     public float rubberBandSmoothing = 1.5f;
@@ -147,6 +157,23 @@ public class AICarController : MonoBehaviour, IStunnable
 
     void Update()
     {
+        // 落下からの復帰中は、少しの間だけ何もさせない。
+        if (isRespawning)
+        {
+            respawnTimer -= Time.deltaTime;
+            if (respawnTimer <= 0f) isRespawning = false;
+            return;
+        }
+
+        // コース外に落下したら、直前の安全な位置まで引き戻す。
+        if (transform.position.y < fallThresholdY)
+        {
+            Respawn();
+            return;
+        }
+        lastSafePosition = transform.position;
+        lastSafeRotation = transform.rotation;
+
         // 被弾直後の無敵は、スタン中や停止中も含めて時間を進める。
         if (hitInvincibleTimer > 0f)
         {
@@ -206,9 +233,28 @@ public class AICarController : MonoBehaviour, IStunnable
         return Vector3.zero;
     }
 
+    // 落下してから復帰するまでの間、直前の安全な位置とその向きを覚えておく。
+    void Respawn()
+    {
+        isRespawning = true;
+        respawnTimer = respawnFreezeDuration;
+        isStunned = false;
+        isRecovering = false;
+        stuckTimer = 0f;
+        if (rb != null) rb.velocity = Vector3.zero;
+        transform.position = lastSafePosition + Vector3.up * 0.5f;
+        transform.rotation = lastSafeRotation;
+    }
+
     void FixedUpdate()
     {
         if (rb == null) return;
+
+        if (isRespawning)
+        {
+            rb.velocity = Vector3.zero;
+            return;
+        }
 
         if (!canMove)
         {
