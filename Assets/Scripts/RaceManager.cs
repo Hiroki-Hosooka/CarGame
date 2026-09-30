@@ -16,6 +16,15 @@ public class RaceManager : MonoBehaviour
     // 判定は「押した瞬間」なので、押しっぱなしでは成功しない。
     public float startDashWindow = 0.4f;
 
+    [Header("BGM")]
+    [Tooltip("レース開始時に再生するBGM。シーン読み込みと同時に再生を始める。")]
+    public AudioClip bgmClip;
+    [Tooltip("BGMの再生開始から、レースが実際にスタートする（動けるようになる）までの秒数。" +
+        "カウントダウン（3・2・1・START!）は、この時間ちょうどに終わるように自動で配置される。")]
+    public float raceStartDelaySeconds = 12f;
+    [Range(0f, 1f)] public float bgmVolume = 0.8f;
+    AudioSource bgmSource;
+
     [Header("Speed Class (50cc / 100cc / 150cc / 200cc)")]
     [Tooltip("Player・CPU共通の速度倍率。タイトル画面から来た場合は選択したクラスの値で上書きされる。")]
     public float speedClassMultiplier = 1f;
@@ -113,6 +122,8 @@ public class RaceManager : MonoBehaviour
 
     void Start()
     {
+        PlayBgm();
+
         if (retryPanel != null) retryPanel.SetActive(false);
 
         if (GameSettings.HasSelection)
@@ -243,6 +254,9 @@ public class RaceManager : MonoBehaviour
         Rigidbody rb = newPlayer.GetComponent<Rigidbody>();
         if (rb == null) rb = newPlayer.AddComponent<Rigidbody>();
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
+        // 高速クラス（200cc等）やキラー/スター中の高速移動時に、チェックポイントの
+        // 薄いトリガーを1フレームですり抜けて周回判定を取りこぼさないようにする。
+        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
         player = newPlayer.AddComponent<PlayerScript>();
 
@@ -306,11 +320,12 @@ public class RaceManager : MonoBehaviour
         raceFinished = true;
         SetAllCanMove(false);
 
-        bool isWin = IsPlayerFirstPlace();
+        // WIN!/LOSE...の二択ではなく、実際に何位でゴールしたかを表示する。
+        int finalRank = player != null ? GetRank(player.gameObject) : 1;
         if (viewScript != null)
         {
             viewScript.ShowResult(raceTimer, bestLapTime);
-            viewScript.ShowCountdown(isWin ? "WIN!" : "LOSE...");
+            viewScript.ShowCountdown(finalRank <= 1 ? "1位 WIN!!" : finalRank + "位");
         }
 
         if (retryPanel != null) retryPanel.SetActive(true);
@@ -331,13 +346,6 @@ public class RaceManager : MonoBehaviour
     bool IsPlayer(LapScript racer)
     {
         return player != null && racer.gameObject.transform.IsChildOf(player.transform);
-    }
-
-    bool IsPlayerFirstPlace()
-    {
-        if (racers.Count < 2) return true;
-        LapScript top = racers[0];
-        return IsPlayer(top);
     }
 
     // 現在の総レーサー数（Player+CPU）。ItemBoxのアイテム抽選に使う。
@@ -419,7 +427,7 @@ public class RaceManager : MonoBehaviour
     // 被弾直後は「何に当たったか」を優先し、それが消えたら逆走判定に戻す。
     void UpdateCenterMessage()
     {
-        // ゴール後は結果表示（WIN!/LOSE...）を上書きしない。
+        // ゴール後は結果表示（順位）を上書きしない。
         if (raceFinished) return;
 
         bool showHit = player != null && player.ShowHitMessage;
@@ -455,6 +463,7 @@ public class RaceManager : MonoBehaviour
             case HitCause.Banana: return "HIT BY BANANA!";
             case HitCause.Lightning: return "HIT BY LIGHTNING!";
             case HitCause.Crash: return "CRASHED!";
+            case HitCause.FellOff: return "OUT!! FELL OFF THE COURSE!";
             default: return "";
         }
     }
@@ -559,6 +568,14 @@ public class RaceManager : MonoBehaviour
         float totalCountdown = countdownStepSeconds * steps.Length;
         float elapsedTotal = 0f;
 
+        // BGMの再生開始（Start内でCountdownRoutineと同時に呼んでいる）からraceStartDelaySeconds
+        // ちょうどでレースが始まるよう、"3・2・1・START!"が始まる前に無音の待ち時間を挟む。
+        float preCountdownWait = raceStartDelaySeconds - (totalCountdown + countdownStepSeconds);
+        if (preCountdownWait > 0f)
+        {
+            yield return new WaitForSeconds(preCountdownWait);
+        }
+
         foreach (string step in steps)
         {
             if (viewScript != null) viewScript.ShowCountdown(step);
@@ -611,6 +628,23 @@ public class RaceManager : MonoBehaviour
         }
     }
 
+    // シーン開始と同時にBGMを再生する。カウントダウンもこれと同じタイミング（Start内）で
+    // 始まるため、両者のずれは実質フレーム単位に収まる。
+    void PlayBgm()
+    {
+        if (bgmClip == null) return;
+
+        bgmSource = GetComponent<AudioSource>();
+        if (bgmSource == null) bgmSource = gameObject.AddComponent<AudioSource>();
+
+        bgmSource.clip = bgmClip;
+        bgmSource.loop = true;
+        bgmSource.playOnAwake = false;
+        bgmSource.volume = bgmVolume;
+        bgmSource.spatialBlend = 0f;
+        bgmSource.Play();
+    }
+
     // カウントダウン中、スピードメーターを使って「いつアクセルを踏めばいいか」を示す。
     // カウントダウン全体を通してゲージが伸びていき、満タン付近＝踏むタイミング。
     // 早く押しすぎるとフライングになり、この回はスタートダッシュできない。
@@ -654,7 +688,15 @@ public class RaceManager : MonoBehaviour
 
         if (racers.Count < 2 || viewScript == null) return;
 
-        racers.Sort((a, b) => b.Progress.CompareTo(a.Progress));
+        // Progress（通過チェックポイント数ベース）だけだと、同じチェックポイント区間内にいる
+        // 車同士は値が同じになり、実際に追い抜いても順位に反映されない。
+        // 同点のときだけ、コース経路上の連続的な位置で決着をつける。
+        racers.Sort((a, b) =>
+        {
+            int cmp = b.Progress.CompareTo(a.Progress);
+            if (cmp != 0) return cmp;
+            return ComputePathFraction(b.transform).CompareTo(ComputePathFraction(a.transform));
+        });
 
         List<string> lines = new List<string>();
         for (int i = 0; i < racers.Count; i++)
@@ -662,6 +704,44 @@ public class RaceManager : MonoBehaviour
             lines.Add((i + 1) + ". " + racers[i].racerName);
         }
         viewScript.ShowRanking(lines);
+    }
+
+    // コース経路（trackPath）上で、carが現在どのくらい進んでいるかを0〜1の連続値で返す。
+    // チェックポイント通過数が同じ車同士の順位（追い抜き）を決めるためだけに使う。
+    float ComputePathFraction(Transform car)
+    {
+        if (trackPath == null || trackPath.Length < 2 || car == null) return 0f;
+
+        Vector3 pos = car.position;
+        pos.y = 0f;
+
+        int bestSegment = 0;
+        float bestT = 0f;
+        float bestDistSqr = float.MaxValue;
+
+        for (int i = 0; i < trackPath.Length; i++)
+        {
+            Transform a = trackPath[i];
+            Transform b = trackPath[(i + 1) % trackPath.Length];
+            if (a == null || b == null) continue;
+
+            Vector3 pa = a.position; pa.y = 0f;
+            Vector3 pb = b.position; pb.y = 0f;
+            Vector3 segment = pb - pa;
+            float segLenSqr = segment.sqrMagnitude;
+            float t = segLenSqr > 0.0001f ? Mathf.Clamp01(Vector3.Dot(pos - pa, segment) / segLenSqr) : 0f;
+            Vector3 projected = pa + segment * t;
+            float distSqr = (pos - projected).sqrMagnitude;
+
+            if (distSqr < bestDistSqr)
+            {
+                bestDistSqr = distSqr;
+                bestSegment = i;
+                bestT = t;
+            }
+        }
+
+        return (bestSegment + bestT) / trackPath.Length;
     }
 
     void SpawnAICars()
@@ -694,6 +774,9 @@ public class RaceManager : MonoBehaviour
             Rigidbody rb = aiCar.GetComponent<Rigidbody>();
             if (rb == null) rb = aiCar.AddComponent<Rigidbody>();
             rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
+            // 高速クラス（200cc等）やキラー/スター中の高速移動時に、チェックポイントの
+            // 薄いトリガーを1フレームですり抜けて周回判定を取りこぼさないようにする。
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
             AICarController ai = aiCar.AddComponent<AICarController>();
             ai.InitializeWaypoints(waypoints);

@@ -56,6 +56,19 @@ public class LapScript : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        TryPassCheckpoint(other);
+    }
+
+    // 高速クラス（200cc等）やキラー/スター中の高速移動時は、1フレームでチェックポイントの
+    // トリガーを通り抜けてOnTriggerEnterを取りこぼすことがあるため、重なっている間も毎フレーム試す
+    // （ItemBoxのOnTriggerStayと同じ考え方）。
+    private void OnTriggerStay(Collider other)
+    {
+        TryPassCheckpoint(other);
+    }
+
+    void TryPassCheckpoint(Collider other)
+    {
         if (Finished) return;
         // RaceManagerがある場合、カウントダウン中/終了後のチェックポイント接触は無視する。
         if (raceManager != null && !raceManager.IsRacing) return;

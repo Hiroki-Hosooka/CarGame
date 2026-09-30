@@ -71,11 +71,24 @@ public class PlayerScript : MonoBehaviour, IStunnable
 
     [Header("Item - Killer")]
     public float killerMaxDuration = 8f;
+    [Tooltip("使用開始からこの秒数が経つまでは、既にkillerTargetRank以内でも自動終了しない。" +
+        "既に目標順位にいる状態で使ってしまい、何も起きずに終わる（＝機能していないように見える）ことを防ぐ。")]
+    public float killerMinDuration = 2.5f;
     public float killerSpeed = 34f;
     public int killerTargetRank = 4; // この順位以内に入ったら自動運転を終了する
     bool isKillerActive;
     float killerTimer;
     int killerWaypointIndex = -1;
+
+    [Header("Fall Recovery (レインボーロード等、コース外に地面が無いコース用)")]
+    [Tooltip("このY座標を下回ったら「コース外に落下した」とみなし、直前の安全な位置まで引き戻す。")]
+    public float fallThresholdY = -10f;
+    [Tooltip("落下から復帰した直後、少しの間だけ操作を止める時間（Lakituに引き上げてもらうイメージ）。")]
+    public float respawnFreezeDuration = 1.2f;
+    Vector3 lastSafePosition;
+    Quaternion lastSafeRotation;
+    bool isRespawning;
+    float respawnTimer;
 
     [Header("Slipstream (前の車の後ろにつくと加速)")]
     public bool enableSlipstream = true;
@@ -233,6 +246,25 @@ public class PlayerScript : MonoBehaviour, IStunnable
     void Update()
     {
         turnInput = 0f;
+
+        // 落下からの復帰中は、少しの間だけ何もさせない（Lakituに引き上げてもらっている間のイメージ）。
+        if (isRespawning)
+        {
+            respawnTimer -= Time.deltaTime;
+            forwardPressed = false;
+            backPressed = false;
+            if (respawnTimer <= 0f) isRespawning = false;
+            return;
+        }
+
+        // コース外に落下したら、直前の安全な位置まで引き戻す。
+        if (transform.position.y < fallThresholdY)
+        {
+            Respawn();
+            return;
+        }
+        lastSafePosition = transform.position;
+        lastSafeRotation = transform.rotation;
 
         // 被弾直後の無敵は、スタン中も含めて時間を進める（スタン明けにも少し無敵が残る）。
         if (hitInvincibleTimer > 0f)
@@ -500,7 +532,9 @@ public class PlayerScript : MonoBehaviour, IStunnable
     {
         killerTimer -= Time.deltaTime;
 
-        bool reachedTarget = raceManager != null && raceManager.GetRank(gameObject) <= killerTargetRank;
+        float elapsedSinceStart = killerMaxDuration - killerTimer;
+        bool reachedTarget = elapsedSinceStart >= killerMinDuration
+            && raceManager != null && raceManager.GetRank(gameObject) <= killerTargetRank;
         if (killerTimer <= 0f || reachedTarget)
         {
             isKillerActive = false;
@@ -551,6 +585,20 @@ public class PlayerScript : MonoBehaviour, IStunnable
                 nearest = i;
             }
         }
+
+        // 単純な最近傍だと、既に通り過ぎた直後のウェイポイントの方が次のウェイポイントより
+        // 近いことがあり、そちらへ引き返す「逆走」が起きてしまう。進行方向の後ろ側にある
+        // 場合は、1つ先のウェイポイントを初期目標にする。
+        if (path[nearest] != null)
+        {
+            Vector3 toNearest = path[nearest].position - transform.position;
+            toNearest.y = 0f;
+            if (toNearest.sqrMagnitude > 0.0001f && Vector3.Dot(transform.forward, toNearest.normalized) < 0f)
+            {
+                nearest = (nearest + 1) % path.Length;
+            }
+        }
+
         return nearest;
     }
 
@@ -586,9 +634,31 @@ public class PlayerScript : MonoBehaviour, IStunnable
         EndDrift(false);
     }
 
+    // 落下してから復帰するまでの間、直前の安全な位置とその向きを覚えておく。
+    void Respawn()
+    {
+        isRespawning = true;
+        respawnTimer = respawnFreezeDuration;
+        isStunned = false;
+        isDrifting = false;
+        driftCharge = 0f;
+        velocity = Vector3.zero;
+        if (rb != null) rb.velocity = Vector3.zero;
+        transform.position = lastSafePosition + Vector3.up * 0.5f;
+        transform.rotation = lastSafeRotation;
+        lastHitCause = HitCause.FellOff;
+        hitMessageTimer = hitMessageDuration;
+    }
+
     void FixedUpdate()
     {
         if (rb == null) return;
+
+        if (isRespawning)
+        {
+            rb.velocity = Vector3.zero;
+            return;
+        }
 
         float effectiveMoveSpeed = isKillerActive ? Mathf.Max(EffectiveMoveSpeed, killerSpeed) : EffectiveMoveSpeed;
 
