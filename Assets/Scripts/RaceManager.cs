@@ -16,6 +16,15 @@ public class RaceManager : MonoBehaviour
     // 判定は「押した瞬間」なので、押しっぱなしでは成功しない。
     public float startDashWindow = 0.4f;
 
+    [Header("BGM")]
+    [Tooltip("レース開始時に再生するBGM。シーン読み込みと同時に再生を始める。")]
+    public AudioClip bgmClip;
+    [Tooltip("BGMの再生開始から、レースが実際にスタートする（動けるようになる）までの秒数。" +
+        "カウントダウン（3・2・1・START!）は、この時間ちょうどに終わるように自動で配置される。")]
+    public float raceStartDelaySeconds = 12f;
+    [Range(0f, 1f)] public float bgmVolume = 0.8f;
+    AudioSource bgmSource;
+
     [Header("Speed Class (50cc / 100cc / 150cc / 200cc)")]
     [Tooltip("Player・CPU共通の速度倍率。タイトル画面から来た場合は選択したクラスの値で上書きされる。")]
     public float speedClassMultiplier = 1f;
@@ -113,6 +122,8 @@ public class RaceManager : MonoBehaviour
 
     void Start()
     {
+        PlayBgm();
+
         if (retryPanel != null) retryPanel.SetActive(false);
 
         if (GameSettings.HasSelection)
@@ -557,6 +568,14 @@ public class RaceManager : MonoBehaviour
         float totalCountdown = countdownStepSeconds * steps.Length;
         float elapsedTotal = 0f;
 
+        // BGMの再生開始（Start内でCountdownRoutineと同時に呼んでいる）からraceStartDelaySeconds
+        // ちょうどでレースが始まるよう、"3・2・1・START!"が始まる前に無音の待ち時間を挟む。
+        float preCountdownWait = raceStartDelaySeconds - (totalCountdown + countdownStepSeconds);
+        if (preCountdownWait > 0f)
+        {
+            yield return new WaitForSeconds(preCountdownWait);
+        }
+
         foreach (string step in steps)
         {
             if (viewScript != null) viewScript.ShowCountdown(step);
@@ -607,6 +626,23 @@ public class RaceManager : MonoBehaviour
         {
             player.ApplyStartDash();
         }
+    }
+
+    // シーン開始と同時にBGMを再生する。カウントダウンもこれと同じタイミング（Start内）で
+    // 始まるため、両者のずれは実質フレーム単位に収まる。
+    void PlayBgm()
+    {
+        if (bgmClip == null) return;
+
+        bgmSource = GetComponent<AudioSource>();
+        if (bgmSource == null) bgmSource = gameObject.AddComponent<AudioSource>();
+
+        bgmSource.clip = bgmClip;
+        bgmSource.loop = true;
+        bgmSource.playOnAwake = false;
+        bgmSource.volume = bgmVolume;
+        bgmSource.spatialBlend = 0f;
+        bgmSource.Play();
     }
 
     // カウントダウン中、スピードメーターを使って「いつアクセルを踏めばいいか」を示す。

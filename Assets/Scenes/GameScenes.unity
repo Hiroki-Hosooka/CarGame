@@ -4389,6 +4389,9 @@ MonoBehaviour:
   - {fileID: 1646981259178978, guid: 50477af197889084e8a6d97f2b73b73b, type: 3}
   countdownStepSeconds: 1
   startDashWindow: 0.35
+  bgmClip: {fileID: 8300000, guid: f274d1898974474389678af197a29edd, type: 3}
+  raceStartDelaySeconds: 12
+  bgmVolume: 0.8
   speedClassMultiplier: 1
   aiTurnSpeed: 90
   aiSpeedRatio: 0.88
