@@ -243,6 +243,9 @@ public class RaceManager : MonoBehaviour
         Rigidbody rb = newPlayer.GetComponent<Rigidbody>();
         if (rb == null) rb = newPlayer.AddComponent<Rigidbody>();
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
+        // 高速クラス（200cc等）やキラー/スター中の高速移動時に、チェックポイントの
+        // 薄いトリガーを1フレームですり抜けて周回判定を取りこぼさないようにする。
+        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
         player = newPlayer.AddComponent<PlayerScript>();
 
@@ -695,6 +698,9 @@ public class RaceManager : MonoBehaviour
             Rigidbody rb = aiCar.GetComponent<Rigidbody>();
             if (rb == null) rb = aiCar.AddComponent<Rigidbody>();
             rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
+            // 高速クラス（200cc等）やキラー/スター中の高速移動時に、チェックポイントの
+            // 薄いトリガーを1フレームですり抜けて周回判定を取りこぼさないようにする。
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
             AICarController ai = aiCar.AddComponent<AICarController>();
             ai.InitializeWaypoints(waypoints);
