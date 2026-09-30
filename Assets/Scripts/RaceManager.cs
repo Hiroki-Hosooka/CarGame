@@ -25,6 +25,13 @@ public class RaceManager : MonoBehaviour
     [Range(0f, 1f)] public float bgmVolume = 0.8f;
     AudioSource bgmSource;
 
+    [Header("Lap Message")]
+    [Tooltip("1周ごとに画面中央へ「LAP n!」を表示しておく秒数。")]
+    public float lapMessageDuration = 3f;
+    float lapMessageTimer;
+    bool lapMessageWasShown;
+    string lapMessageText = "";
+
     [Header("Speed Class (50cc / 100cc / 150cc / 200cc)")]
     [Tooltip("Player・CPU共通の速度倍率。タイトル画面から来た場合は選択したクラスの値で上書きされる。")]
     public float speedClassMultiplier = 1f;
@@ -306,6 +313,9 @@ public class RaceManager : MonoBehaviour
         if (lapTime < bestLapTime) bestLapTime = lapTime;
         if (viewScript != null) viewScript.ShowBestLap(racer.LapCount, racer.totalLaps, bestLapTime);
 
+        lapMessageText = racer.LapCount >= racer.totalLaps ? "FINAL LAP!" : "LAP " + racer.LapCount + "!";
+        lapMessageTimer = lapMessageDuration;
+
         ResetAllItemBoxes();
         lightningAvailableThisLap = true;
     }
@@ -319,6 +329,11 @@ public class RaceManager : MonoBehaviour
 
         raceFinished = true;
         SetAllCanMove(false);
+
+        // racersの並び順は毎フレームUpdate側で更新されるため、ここで呼ばずにいると
+        // ゴールした瞬間（Finished=trueになった直後）の古い並び順のままGetRankしてしまい、
+        // 実際の順位（右上のランキング表示）とズレて見えることがあった。
+        UpdateRanking();
 
         // WIN!/LOSE...の二択ではなく、実際に何位でゴールしたかを表示する。
         int finalRank = player != null ? GetRank(player.gameObject) : 1;
@@ -423,8 +438,8 @@ public class RaceManager : MonoBehaviour
     bool wrongWayShown;
     bool hitMessageWasShown;
 
-    // 画面中央のカウントダウン表示欄は、被弾原因の表示と逆走警告の両方で使う。
-    // 被弾直後は「何に当たったか」を優先し、それが消えたら逆走判定に戻す。
+    // 画面中央のカウントダウン表示欄は、被弾原因・ラップ表示・逆走警告の3つで使い回す。
+    // 優先度は 被弾 > ラップ表示 > 逆走警告 の順（値が変わったら次の判定に進む）。
     void UpdateCenterMessage()
     {
         // ゴール後は結果表示（順位）を上書きしない。
@@ -449,6 +464,23 @@ public class RaceManager : MonoBehaviour
             // （消してもUpdateWrongWayWarningは状態が変わらない限り何もしないため）。
             if (viewScript != null) viewScript.ShowCountdown("");
             hitMessageWasShown = false;
+        }
+
+        if (lapMessageTimer > 0f)
+        {
+            lapMessageTimer -= Time.deltaTime;
+            if (viewScript != null) viewScript.ShowCountdown(lapMessageText);
+            lapMessageWasShown = true;
+            // 表示中身が変わるので、逆走警告側の状態もリセットしておく。
+            wrongWayTimer = 0f;
+            wrongWayShown = false;
+            return;
+        }
+
+        if (lapMessageWasShown)
+        {
+            if (viewScript != null) viewScript.ShowCountdown("");
+            lapMessageWasShown = false;
         }
 
         UpdateWrongWayWarning();

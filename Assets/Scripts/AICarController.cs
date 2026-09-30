@@ -200,7 +200,13 @@ public class AICarController : MonoBehaviour, IStunnable
         if (smoothedSteerDir.sqrMagnitude < 0.0001f) smoothedSteerDir = transform.forward;
 
         Quaternion targetRotation = Quaternion.LookRotation(smoothedSteerDir.normalized, Vector3.up);
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, turnSpeed * Time.deltaTime);
+        // キラー/スター中は速度が大きく上がるため、旋回速度もそれに応じて上げないと
+        // カーブを曲がりきれずコースアウトしたり壁に突っ込んだりして挙動が不安定に見える
+        // （Playerのキラー中オート運転が旋回速度を2倍にしているのと同じ考え方）。
+        float turnRateMultiplier = 1f;
+        if (killerTimeRemaining > 0f) turnRateMultiplier = 2f;
+        else if (starSpeedTimeRemaining > 0f) turnRateMultiplier = 1.4f;
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, turnSpeed * turnRateMultiplier * Time.deltaTime);
     }
 
     Vector3 ComputeSteeringDirection()
