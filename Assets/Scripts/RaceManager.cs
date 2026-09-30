@@ -313,7 +313,7 @@ public class RaceManager : MonoBehaviour
         if (lapTime < bestLapTime) bestLapTime = lapTime;
         if (viewScript != null) viewScript.ShowBestLap(racer.LapCount, racer.totalLaps, bestLapTime);
 
-        lapMessageText = "LAP " + racer.LapCount + "!";
+        lapMessageText = racer.LapCount >= racer.totalLaps ? "FINAL LAP!" : "LAP " + racer.LapCount + "!";
         lapMessageTimer = lapMessageDuration;
 
         ResetAllItemBoxes();
