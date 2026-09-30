@@ -309,11 +309,12 @@ public class RaceManager : MonoBehaviour
         raceFinished = true;
         SetAllCanMove(false);
 
-        bool isWin = IsPlayerFirstPlace();
+        // WIN!/LOSE...の二択ではなく、実際に何位でゴールしたかを表示する。
+        int finalRank = player != null ? GetRank(player.gameObject) : 1;
         if (viewScript != null)
         {
             viewScript.ShowResult(raceTimer, bestLapTime);
-            viewScript.ShowCountdown(isWin ? "WIN!" : "LOSE...");
+            viewScript.ShowCountdown(finalRank <= 1 ? "1位 WIN!!" : finalRank + "位");
         }
 
         if (retryPanel != null) retryPanel.SetActive(true);
@@ -334,13 +335,6 @@ public class RaceManager : MonoBehaviour
     bool IsPlayer(LapScript racer)
     {
         return player != null && racer.gameObject.transform.IsChildOf(player.transform);
-    }
-
-    bool IsPlayerFirstPlace()
-    {
-        if (racers.Count < 2) return true;
-        LapScript top = racers[0];
-        return IsPlayer(top);
     }
 
     // 現在の総レーサー数（Player+CPU）。ItemBoxのアイテム抽選に使う。
@@ -422,7 +416,7 @@ public class RaceManager : MonoBehaviour
     // 被弾直後は「何に当たったか」を優先し、それが消えたら逆走判定に戻す。
     void UpdateCenterMessage()
     {
-        // ゴール後は結果表示（WIN!/LOSE...）を上書きしない。
+        // ゴール後は結果表示（順位）を上書きしない。
         if (raceFinished) return;
 
         bool showHit = player != null && player.ShowHitMessage;
@@ -658,7 +652,15 @@ public class RaceManager : MonoBehaviour
 
         if (racers.Count < 2 || viewScript == null) return;
 
-        racers.Sort((a, b) => b.Progress.CompareTo(a.Progress));
+        // Progress（通過チェックポイント数ベース）だけだと、同じチェックポイント区間内にいる
+        // 車同士は値が同じになり、実際に追い抜いても順位に反映されない。
+        // 同点のときだけ、コース経路上の連続的な位置で決着をつける。
+        racers.Sort((a, b) =>
+        {
+            int cmp = b.Progress.CompareTo(a.Progress);
+            if (cmp != 0) return cmp;
+            return ComputePathFraction(b.transform).CompareTo(ComputePathFraction(a.transform));
+        });
 
         List<string> lines = new List<string>();
         for (int i = 0; i < racers.Count; i++)
@@ -666,6 +668,44 @@ public class RaceManager : MonoBehaviour
             lines.Add((i + 1) + ". " + racers[i].racerName);
         }
         viewScript.ShowRanking(lines);
+    }
+
+    // コース経路（trackPath）上で、carが現在どのくらい進んでいるかを0〜1の連続値で返す。
+    // チェックポイント通過数が同じ車同士の順位（追い抜き）を決めるためだけに使う。
+    float ComputePathFraction(Transform car)
+    {
+        if (trackPath == null || trackPath.Length < 2 || car == null) return 0f;
+
+        Vector3 pos = car.position;
+        pos.y = 0f;
+
+        int bestSegment = 0;
+        float bestT = 0f;
+        float bestDistSqr = float.MaxValue;
+
+        for (int i = 0; i < trackPath.Length; i++)
+        {
+            Transform a = trackPath[i];
+            Transform b = trackPath[(i + 1) % trackPath.Length];
+            if (a == null || b == null) continue;
+
+            Vector3 pa = a.position; pa.y = 0f;
+            Vector3 pb = b.position; pb.y = 0f;
+            Vector3 segment = pb - pa;
+            float segLenSqr = segment.sqrMagnitude;
+            float t = segLenSqr > 0.0001f ? Mathf.Clamp01(Vector3.Dot(pos - pa, segment) / segLenSqr) : 0f;
+            Vector3 projected = pa + segment * t;
+            float distSqr = (pos - projected).sqrMagnitude;
+
+            if (distSqr < bestDistSqr)
+            {
+                bestDistSqr = distSqr;
+                bestSegment = i;
+                bestT = t;
+            }
+        }
+
+        return (bestSegment + bestT) / trackPath.Length;
     }
 
     void SpawnAICars()
